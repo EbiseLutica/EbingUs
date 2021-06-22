@@ -40,6 +40,7 @@ namespace EbingUs
             var mods = new IModuleBase[] {
                 JesterModule.Instance,
                 CommandModule.Instance,
+                BillboardModule.Instance,
             };
 
             // モジュールを読み込む
