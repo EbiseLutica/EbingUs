@@ -35,9 +35,8 @@ namespace EbingUs
 
         public override void OnEnabled()
         {
-            var c = CommandModule.Instance;
             // てるてる切り替えコマンド
-            c.RegisterCommand("jester", async (args, body, e) => {
+            CommandModule.Instance.RegisterCommand("jester", async (args, body, e) => {
                 switch (body.Trim().ToLowerInvariant())
                 {
                     case "on":
@@ -75,6 +74,8 @@ namespace EbingUs
             Logger.LogInformation($"Jester is {jester.Character?.PlayerInfo.PlayerName}.");
 
             await ShowJesterAsync(e.Game, jester.Character!);
+            
+            BillboardModule.Instance.AddBillboard(jester.Character!, "<color=#ff0000>てるてる</color>");
         }
 
         [EventListener]
@@ -123,13 +124,13 @@ namespace EbingUs
             var baseName = jester.PlayerInfo.PlayerName;
             await jester.SendChatToPlayerAsync("あなたが<color=#ff0000>てるてる</color>です。");
             await jester.SendChatToPlayerAsync("<color=#ff0000>会議で追放されること</color>が勝利条件です。");
-            while (sessions.ContainsKey(game))
-            {
-                await RpcUtility.SetPlayerLocalNameAsync(game, jester, "<color=#ff0000>てるてる</color>");
-                await Task.Delay(500);
-                await RpcUtility.SetPlayerLocalNameAsync(game, jester, baseName);
-                await Task.Delay(500);
-            }
+            // while (sessions.ContainsKey(game))
+            // {
+            //     await RpcUtility.SetPlayerLocalNameAsync(jester, "<color=#ff0000>てるてる</color>");
+            //     await Task.Delay(500);
+            //     await RpcUtility.SetPlayerLocalNameAsync(jester, baseName);
+            //     await Task.Delay(500);
+            // }
         }
 
         private JesterSession? Get(IGame game) => sessions.ContainsKey(game) ? sessions[game] : null;

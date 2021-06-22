@@ -17,10 +17,27 @@ namespace EbingUs
     /// </summary>
     public class CommandModule : ModuleBase<CommandModule>
     {
-        public void RegisterCommand(string name, AsyncCommandHandler handler, bool isHostOnly = true, bool isLobbyOnly = true)
+        public CommandModule RegisterCommand(string name, AsyncCommandHandler handler, string? help = null, bool isHostOnly = true, bool isLobbyOnly = true)
         {
-            commands.Add(name.ToLowerInvariant(), new Command(handler, isHostOnly, isLobbyOnly));
+            commands.Add(name.ToLowerInvariant(), new Command(handler, isHostOnly, isLobbyOnly, help));
             Logger.LogInformation("Add " + name + " command");
+            return this;
+        }
+
+        public override void OnEnabled()
+        {
+            RegisterCommand("help", async (args, body, e) => {
+                var query = commands.AsEnumerable();
+                if (!e.ClientPlayer.IsHost)
+                {
+                    query = query.Where(c => !c.Value.IsHostOnly);
+                }
+                if (e.Game.GameState != GameStates.NotStarted)
+                {
+                    query = query.Where(c => !c.Value.IsLobbyOnly);
+                }
+                return string.Join('\n', query.Select(c => $"{c.Key} - {c.Value.Help}"));
+            });
         }
 
         public override void OnDisabled()
@@ -46,9 +63,18 @@ namespace EbingUs
             var name = parts[0].ToLowerInvariant();
             var args = parts[1..];
             var body = string.Join(" ", args);
-            ValueTask ChatAsync(string text) => e.PlayerControl.SendChatAsync(text);
-
+            async ValueTask ChatAsync(string text)
+            {
+                var lines = text.Split('\n');
+                foreach (var item in lines)
+                {
+                    await e.PlayerControl.SendChatToPlayerAsync(item);
+                    await Task.Delay(100);
+                }
+            }
             var commanderName = e.ClientPlayer.Character?.PlayerInfo.PlayerName;
+
+            e.IsCancelled = true;
 
             if (!commands.ContainsKey(name))
             {
@@ -80,9 +106,9 @@ namespace EbingUs
         }
 
         private readonly Dictionary<string, Command> commands = new ();
+        record Command(AsyncCommandHandler Handler, bool IsHostOnly, bool IsLobbyOnly, string? Help);
     }
 
-    public record Command(AsyncCommandHandler Handler, bool IsHostOnly, bool IsLobbyOnly);
 
     public delegate ValueTask<string> AsyncCommandHandler(string[] args, string body, IPlayerChatEvent e);
 }
