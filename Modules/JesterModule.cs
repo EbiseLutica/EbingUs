@@ -26,6 +26,7 @@ namespace EbingUs
         {
             public IGame game;
             public IClientPlayer? jester;
+            public bool jesterWon;
 
             public JesterSession(IGame game)
             {
@@ -40,13 +41,17 @@ namespace EbingUs
                 switch (body.Trim().ToLowerInvariant())
                 {
                     case "on":
+                        if (sessions.ContainsKey(e.Game)) return "てるてるはもう有効";
                         sessions.Add(e.Game, new JesterSession(e.Game));
                         Logger.LogInformation($"Jester Mode is enabled!");
                         return "てるてるを有効化した";
                     case "off":
+                        if (!sessions.ContainsKey(e.Game)) return "てるてるはもう無効";
                         sessions.Remove(e.Game);
                         Logger.LogInformation($"Jester Mode is disabled!");
                         return "てるてるを無効化した";
+                    case "get":
+                        return "てるてるは" + (sessions.ContainsKey(e.Game) ? "有効" : "無効");
                     default:
                         return "/jester <on|off>";
                 }
@@ -73,7 +78,11 @@ namespace EbingUs
             session.jester = jester;
             Logger.LogInformation($"Jester is {jester.Character?.PlayerInfo.PlayerName}.");
 
-            await ShowJesterAsync(e.Game, jester.Character!);
+            // てるてるのタスクを終わらせる
+            await Task.WhenAll(jester.Character!.PlayerInfo.Tasks.Select(c => c.CompleteAsync().AsTask()));
+
+            await jester.Character!.SendChatToPlayerAsync("あなたが<color=#ff0000>てるてる</color>です。");
+            await jester.Character!.SendChatToPlayerAsync("<color=#ff0000>会議で追放されること</color>が勝利条件です。");
             
             BillboardModule.Instance.AddBillboard(jester.Character!, "<color=#ff0000>てるてる</color>");
         }
@@ -89,6 +98,7 @@ namespace EbingUs
             // てるてるの勝利
             if (id is int jesterId && jesterId == e.ClientPlayer.Client.Id)
             {
+                session.jesterWon = true;
                 var jester = e.Game.GetClientPlayer(jesterId)!;
                 Logger.LogInformation("The Jester WON!");
                 // てるてるに天使の輪をつける
@@ -114,23 +124,9 @@ namespace EbingUs
         }
 
         [EventListener]
-        public void OnGameEnded(IGameEndedEvent e)
+        public void OnGameDestroyed(IGameDestroyedEvent e)
         {
             sessions.Remove(e.Game);
-        }
-
-        private async ValueTask ShowJesterAsync(IGame game, IInnerPlayerControl jester)
-        {
-            var baseName = jester.PlayerInfo.PlayerName;
-            await jester.SendChatToPlayerAsync("あなたが<color=#ff0000>てるてる</color>です。");
-            await jester.SendChatToPlayerAsync("<color=#ff0000>会議で追放されること</color>が勝利条件です。");
-            // while (sessions.ContainsKey(game))
-            // {
-            //     await RpcUtility.SetPlayerLocalNameAsync(jester, "<color=#ff0000>てるてる</color>");
-            //     await Task.Delay(500);
-            //     await RpcUtility.SetPlayerLocalNameAsync(jester, baseName);
-            //     await Task.Delay(500);
-            // }
         }
 
         private JesterSession? Get(IGame game) => sessions.ContainsKey(game) ? sessions[game] : null;
