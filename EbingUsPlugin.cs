@@ -20,6 +20,8 @@ namespace EbingUs
 
         public ILogger<EbingUsPlugin> Logger => logger;
 
+        public static readonly string VERSION = "1.1.0";
+
         #pragma warning restore
 
         /// <summary>
@@ -41,6 +43,7 @@ namespace EbingUs
                 JesterModule.Instance,
                 CommandModule.Instance,
                 BillboardModule.Instance,
+                HelloModule.Instance,
             };
 
             // モジュールを読み込む
